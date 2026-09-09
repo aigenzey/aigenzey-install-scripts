@@ -219,12 +219,37 @@ When using `kubectl port-forward`:
   curl -k https://localhost/docs
   ```
 
-### 3. Test Agent Execution over HTTPS
+### 3. Trust Self-Signed TLS Certificate for Local UI / Browser Testing
+
+When calling the runtime from the Aigenzey Web UI, browsers (Chrome, Edge, Safari) block requests to self-signed HTTPS endpoints with `net::ERR_CERT_AUTHORITY_INVALID`.
+
+To trust the certificate locally on your Mac:
+
+1. Export the TLS certificate from the Kubernetes secret:
+   ```bash
+   kubectl get secret are-nginx-tls -n aigenzey-runtime -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/aigenzey-k8s.crt
+   ```
+
+2. (Optional) Inspect the certificate:
+   ```bash
+   vi /tmp/aigenzey-k8s.crt
+   ```
+
+3. Add the certificate to the macOS System Keychain as a trusted root:
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/aigenzey-k8s.crt
+   ```
+
+4. Restart your browser or visit `https://localhost:8443/docs` to verify that the certificate is trusted.
+
+> **Quick Browser Bypass**: Alternatively, open a new tab in the same browser, visit `https://localhost:8443/docs`, click **Advanced** -> **Proceed to localhost (unsafe)** (or type `thisisunsafe` in Chrome). Once accepted, subsequent UI calls will succeed.
+
+### 4. Test Agent Execution over HTTPS
 ```bash
 curl -k -X POST \
-  "https://localhost/api/agents/execute?client_id=default&agent_name=joke" \
-  -H "Content-Type: multipart/form-data" \
-  -F "message=Tell me a developer joke"
+  "https://localhost:8443/api/agents/execute?client_id=my-kube-test&agent_name=poem&apikey=my-kube-test-test-key-WO78KD59H06HO8WMNW" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "The Ocean"}'
 ```
 
 ---

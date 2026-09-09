@@ -181,9 +181,9 @@ curl -X POST "http://localhost:8000/api/agents/execute?client_id=default&agent_n
   -F "message=Tell me a developer joke"
 ```
 
-For complete details on each runtime environment, consult:
+For complete details on each runtime environment and local SSL/TLS certificate trust setup, consult:
 - [Virtual Machine Runtime Guide](file:///Users/rajesh/aigenzey-install-scripts/vm-runtime/README.md)
-- [Kubernetes Runtime Guide](file:///Users/rajesh/aigenzey-install-scripts/kubernetes-runtime/README.md)
+- [Kubernetes Runtime Guide](file:///Users/rajesh/aigenzey-install-scripts/kubernetes-runtime/README.md) (includes local macOS Keychain cert trust commands)
 
 ---
 
