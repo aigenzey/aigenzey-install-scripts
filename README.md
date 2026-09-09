@@ -12,10 +12,14 @@ Whether installing on a Virtual Machine or deploying to a Kubernetes cluster, th
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Organization Name** | `DEFAULT_ORG` | `--default-org <name>` | **Yes** | Organization identifier in Aigenzey. Isolates agent workflows, tools, and execution permissions. | `acme-corp`, `default` |
 | **Instance Name** | `INSTANCE_NAME` | `--instance-name <name>` | **Yes** | Unique hostname or identifier for this runtime node/pod cluster. | `byo-runtime-01`, `k8s-us-east-1` |
-| **Registry / GCR Key** | N/A | `--key-file <file>` | **Yes** (for K8s & private pulls) | Base64 access key (`aigenzey-image-access.txt`) or GCP JSON key with pull access to Google Artifact Registry. | `aigenzey-image-access.txt` |
+| **Deployment Secret Key** | `SECRET_KEY` | `--secret-key <key>` | **Yes** | Secret key for agent deployment authentication. Must match the secret key used by the Aigenzey Control Plane / UI. | `AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do` |
+| **Registry / GCR Key** | `KEY_FILE` or `JSON_KEY` | `--key-file <file>` or `--json-key <file>` | **Yes** (for K8s & private pulls) | Access credentials for Google Artifact Registry. Specify either Base64 key (`aigenzey-image-access.txt`) or GCP service account JSON key (`my-sa-key.json`). | `aigenzey-image-access.txt`, `my-sa-key.json` |
 | **Gemini API Key** | `GOOGLE_API_KEY` | `--google-api-key <key>` | **Yes** (for agents) | Google Gemini API key used by the Agent Runtime Engine (ADK agents). Obtain from [Google AI Studio](https://aistudio.google.com). | `AIzaSyD...` |
 | **Instance Admin Email** | `INSTANCEADMIN_EMAIL` | `--instanceadmin-email <email>` | **Yes** | Admin email registered in your Aigenzey platform. Used by runtime to authenticate and sync agent workflows. | `instanceadmin@aigenzey.com` |
 | **Instance Admin Password** | `INSTANCEADMIN_PASSWORD` | `--instanceadmin-password <pass>` | **Yes** | Password for the Instance Admin account to authorize synchronization with the central API. | `YourSecretPassword123` |
+| **Enable Nginx Proxy** | `ENABLE_NGINX` | `--with-nginx` / `--no-nginx` | Optional | Deploy dedicated Nginx reverse proxy on port 443 with TLS termination (Kubernetes runtime, default: `true`). | `true` |
+| **Nginx Hostname** | `NGINX_HOST` | `--nginx-host <host>` | Optional | Custom domain name for Nginx `server_name` (default: `_` for catch-all wildcard). | `agents.company.com` |
+| **TLS Cert & Key** | `TLS_CERT_FILE`, `TLS_KEY_FILE` | `--tls-cert`, `--tls-key` | Optional | Custom SSL/TLS certificate and private key paths in PEM format (auto self-signs if omitted). | `/path/to/cert.pem` |
 | **Central API URL** | `AIGENZEY_API_URL` | `--api-url <url>` | Optional | URL of the central Aigenzey Management API (Control Plane). Defaults to SaaS endpoint. | `https://api.platform.aigenzey.com` |
 | **Other LLM Keys** | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | `--openai-api-key`, `--anthropic-api-key` | Optional | API keys for OpenAI or Claude if your agent definitions use multi-provider LLMs. | `sk-...` |
 
@@ -40,6 +44,7 @@ You can supply these inputs using either a **Configuration File** (recommended f
    INSTANCEADMIN_EMAIL=admin@mycompany.com
    INSTANCEADMIN_PASSWORD=MySecurePassword123
    GOOGLE_API_KEY=AIzaSyD...
+   SECRET_KEY=AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do
    ```
 3. Run installer with the config file:
    ```bash
@@ -60,10 +65,21 @@ You can supply these inputs using either a **Configuration File** (recommended f
    INSTANCEADMIN_EMAIL=admin@mycompany.com
    INSTANCEADMIN_PASSWORD=MySecurePassword123
    GOOGLE_API_KEY=AIzaSyD...
+   SECRET_KEY=AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do
+
+   # Nginx Reverse Proxy Settings
+   ENABLE_NGINX=true
+   NGINX_HOST="_"
+   TLS_CERT_FILE=
+   TLS_KEY_FILE=
    ```
-3. Run installer with the config file and registry key:
+3. Run installer with the config file and your registry key:
    ```bash
+   # Using Base64 key file:
    ./install.sh k8s --config ./config.env --key-file aigenzey-image-access.txt
+
+   # Using GCP Service Account JSON key:
+   ./install.sh k8s --config ./config.env --json-key /path/to/my-sa-key.json
    ```
 
 ---
@@ -81,14 +97,29 @@ sudo ./install.sh vm \
   --instanceadmin-email admin@mycompany.com \
   --instanceadmin-password MySecret123
 
-# Kubernetes Installation:
+# Kubernetes Installation (with Base64 key):
 ./install.sh k8s \
   --key-file aigenzey-image-access.txt \
   --default-org my-org \
   --instance-name my-k8s-node-1 \
   --admin-email admin@mycompany.com \
   --admin-password MySecret123 \
-  --google-api-key "AIzaSyD..."
+  --secret-key AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do \
+  --google-api-key "AIzaSyD..." \
+  --with-nginx \
+  --nginx-host "_"
+
+# Kubernetes Installation (with GCP Service Account JSON key):
+./install.sh k8s \
+  --json-key /path/to/my-sa-key.json \
+  --default-org my-org \
+  --instance-name my-k8s-node-1 \
+  --admin-email admin@mycompany.com \
+  --admin-password MySecret123 \
+  --secret-key AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do \
+  --google-api-key "AIzaSyD..." \
+  --with-nginx \
+  --nginx-host "_"
 ```
 
 ---
@@ -108,6 +139,11 @@ Aigenzey cleanly separates the SaaS **Control Plane** (Management API, PostgreSQ
 │                     BYO Hardware Runtime Stack                         │
 │                                                                        │
 │   ┌────────────────────────────────────────────────────────────────┐   │
+│   │                 nginx Reverse Proxy (Port 443)                 │   │
+│   │   - TLS termination (HTTPS), SSE streaming, WebSocket upgrade  │   │
+│   └───────────────────────────────┬────────────────────────────────┘   │
+│                                   │ proxy_pass                         │
+│   ┌───────────────────────────────▼────────────────────────────────┐   │
 │   │                     ai-gateway (Port 8090)                     │   │
 │   │   - Quota enforcement, KMS token validation, edge routing      │   │
 │   └───────────────────────────────┬────────────────────────────────┘   │
@@ -125,8 +161,9 @@ Aigenzey cleanly separates the SaaS **Control Plane** (Management API, PostgreSQ
 ```
 
 The runtime stack consists of:
+- **Nginx Reverse Proxy**: Reverse proxy terminating HTTPS on port `443` with TLS encryption, HTTP/1.1 SSE unbuffered streaming, and WebSocket support.
+- **AI Gateway**: Edge proxy managing token accounting, KMS authentication, rate limiting, and request routing (port `8090`).
 - **ARE (Agent Runtime Engine)**: FastAPI engine running Google Agent Development Kit (ADK) workflows, tools, and multi-turn sessions (port `8000`).
-- **AI Gateway**: Edge proxy managing token accounting, API key policies, and request routing (port `8090`).
 - **crawl4ai**: Headless browser scraping container providing web research tools to agents (port `11235`).
 - **Redis**: In-memory caching and session state management (port `6379`).
 
