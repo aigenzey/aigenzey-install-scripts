@@ -50,7 +50,7 @@ INSTANCEADMIN_PASSWORD="SecretPassword123"
 GOOGLE_API_KEY=""
 OPENAI_API_KEY=""
 ANTHROPIC_API_KEY=""
-SECRET_KEY=""
+SECRET_KEY="${SECRET_KEY:-AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do}"
 
 ARE_IMAGE="us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/are-service:latest"
 AI_GATEWAY_IMAGE="us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/ai-gateway-service:latest"
@@ -90,6 +90,7 @@ Application Parameters:
   --default-org <org>           Default organization name (default: default)
   --admin-email <email>         Instance admin email (default: instanceadmin@aigenzey.com)
   --admin-password <password>   Instance admin password
+  --secret-key <key>            Secret key for agent deployment authentication (default: AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do)
   --google-api-key <key>        Google Gemini API Key
   --openai-api-key <key>        OpenAI API Key
   --anthropic-api-key <key>     Anthropic API Key
@@ -167,6 +168,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --admin-password)
             INSTANCEADMIN_PASSWORD="$2"
+            shift 2
+            ;;
+        --secret-key)
+            SECRET_KEY="$2"
             shift 2
             ;;
         --google-api-key)
@@ -373,7 +378,7 @@ stringData:
   GOOGLE_API_KEY: "${GOOGLE_API_KEY}"
   OPENAI_API_KEY: "${OPENAI_API_KEY}"
   ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
-  SECRET_KEY: "${SECRET_KEY:-AGZsecretKeySecure123456789}"
+  SECRET_KEY: "${SECRET_KEY:-AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do}"
   INSTANCEADMIN_EMAIL: "${INSTANCEADMIN_EMAIL}"
   INSTANCEADMIN_PASSWORD: "${INSTANCEADMIN_PASSWORD}"
   PODADMIN_EMAIL: "${INSTANCEADMIN_EMAIL}"

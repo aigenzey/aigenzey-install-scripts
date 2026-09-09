@@ -94,6 +94,9 @@ Before installing, make sure you have the following information and credentials:
    GOOGLE_API_KEY=AIzaSyD...
    OPENAI_API_KEY=sk-...
    ANTHROPIC_API_KEY=
+
+   # Deployment & Session Secret Key (Must match Aigenzey UI/Platform)
+   SECRET_KEY=AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do
    ```
 
 3. Deploy using `config.env` and your Artifact Registry key file:
@@ -113,6 +116,7 @@ Before installing, make sure you have the following information and credentials:
   --instance-name my-k8s-cluster \
   --admin-email admin@mycompany.com \
   --admin-password MySecurePassword123 \
+  --secret-key AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do \
   --google-api-key "AIzaSyD..." \
   --api-url https://api.platform.aigenzey.com
 ```
