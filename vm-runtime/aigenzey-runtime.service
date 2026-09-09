@@ -1,0 +1,22 @@
+[Unit]
+Description=Aigenzey Agent Runtime Engine and Services
+After=network.target docker.service redis.service
+Wants=docker.service redis.service
+
+[Service]
+Type=forking
+User=aigenzey
+Group=aigenzey
+WorkingDirectory=/opt/aigenzey/aigenzey-runtime
+EnvironmentFile=-/opt/aigenzey/config.properties
+ExecStart=/opt/aigenzey/aigenzey-runtime/aigenzey-service.sh start --runtime --no-arp -f /opt/aigenzey/config.properties
+ExecStop=/opt/aigenzey/aigenzey-runtime/aigenzey-service.sh stop --runtime
+ExecReload=/opt/aigenzey/aigenzey-runtime/aigenzey-service.sh restart --runtime -f /opt/aigenzey/config.properties
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=180
+TimeoutStopSec=60
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

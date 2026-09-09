@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-gateway-deployment
+  labels:
+    app: ai-gateway
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: aigenzey-runtime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-gateway
+  template:
+    metadata:
+      labels:
+        app: ai-gateway
+    spec:
+      imagePullSecrets:
+      - name: aigenzey-registry-secret
+      containers:
+      - name: ai-gateway
+        image: us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/ai-gateway-service:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8090
+        envFrom:
+        - configMapRef:
+            name: ai-gateway-config
+        - secretRef:
+            name: ai-gateway-secret
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /docs
+            port: 8090
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /docs
+            port: 8090
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+      - name: kms
+        image: us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/ai-gateway-service:latest
+        imagePullPolicy: Always
+        command: ["uvicorn", "kms.main:app", "--host", "0.0.0.0", "--port", "8050", "--workers", "1"]
+        ports:
+        - name: kms
+          containerPort: 8050
+        envFrom:
+        - configMapRef:
+            name: ai-gateway-config
+        - secretRef:
+            name: ai-gateway-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /docs
+            port: 8050
+          initialDelaySeconds: 20
+          periodSeconds: 20
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /docs
+            port: 8050
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5

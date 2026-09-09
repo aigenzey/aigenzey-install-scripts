@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-gateway-config
+  labels:
+    app: ai-gateway
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: aigenzey-runtime
+data:
+  PORT: "8090"
+  HOST: "0.0.0.0"
+  AIGENZEY_API_URL: "https://api.platform.aigenzey.com"
+  ARE_BASE_URL: "http://are-service:8000"
+  KMS_BASE_URL: "http://127.0.0.1:8050"
+  INSTANCE_NAME: "aigenzey-k8s-runtime"
+  POD_NAME: "aigenzey-k8s-runtime"
+  POD_REGION: "us-central1"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  SYNC_INTERVAL_SECONDS: "300"
+  SERVICE_TIMEOUT: "1200.0"
+  DEFAULT_ORG: "default"

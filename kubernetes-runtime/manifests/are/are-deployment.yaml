@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: are-deployment
+  labels:
+    app: are
+    app.kubernetes.io/component: runtime
+    app.kubernetes.io/part-of: aigenzey-runtime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: are
+  template:
+    metadata:
+      labels:
+        app: are
+    spec:
+      imagePullSecrets:
+      - name: aigenzey-registry-secret
+      initContainers:
+      - name: wait-for-redis
+        image: redis:7-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until redis-cli -h redis-service -p 6379 ping 2>/dev/null | grep -q PONG; do
+            echo "Waiting for redis-service:6379 to become available..."
+            sleep 2
+          done
+          echo "Redis is ready!"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+      containers:
+      - name: are
+        image: us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/are-service:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: are-config
+        - secretRef:
+            name: are-secret
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /docs
+            port: 8000
+          initialDelaySeconds: 45
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /docs
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: are-storage
+          mountPath: /app/organizations
+          subPath: organizations
+        - name: are-storage
+          mountPath: /logs
+          subPath: logs
+      volumes:
+      - name: are-storage
+        persistentVolumeClaim:
+          claimName: are-pvc

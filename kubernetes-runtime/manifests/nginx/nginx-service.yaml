@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  labels:
+    app: nginx
+    app.kubernetes.io/component: reverse-proxy
+    app.kubernetes.io/part-of: aigenzey-runtime
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+  - name: https
+    port: 443
+    targetPort: 443
+    protocol: TCP
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP

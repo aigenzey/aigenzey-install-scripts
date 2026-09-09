@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: are-config
+  labels:
+    app: are
+    app.kubernetes.io/component: runtime
+    app.kubernetes.io/part-of: aigenzey-runtime
+data:
+  PORT: "8000"
+  HOST: "0.0.0.0"
+  DEPLOYMENT: "LOCAL"
+  API_KEY_CHECK: "false"
+  ENABLE_SESSION_LOGGING: "true"
+  GOOGLE_GENAI_USE_VERTEXAI: "false"
+  DEPLOYMENT_SYNC: "true"
+  AIGENZEY_API_URL: "https://api.platform.aigenzey.com"
+  INSTANCE_NAME: "aigenzey-k8s-runtime"
+  POD_NAME: "aigenzey-k8s-runtime"
+  POD_REGION: "us-central1"
+  SYNC_INTERVAL_SECONDS: "60"
+  CLIENT_ID: "default"
+  LOAD_AGENTS_ON_START: "false"
+  SESSION_SERVICE_TYPE: "redis"
+  REDIS_URL: "redis://redis-service:6379/0"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  CRAWL4AI_BASE_URL: "http://crawl4ai-service:11235"

@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+    app.kubernetes.io/component: reverse-proxy
+    app.kubernetes.io/part-of: aigenzey-runtime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: https
+          containerPort: 443
+        - name: http
+          containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          tcpSocket:
+            port: 443
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 443
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+          readOnly: true
+        - name: nginx-certs
+          mountPath: /etc/nginx/certs
+          readOnly: true
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: nginx-config
+      - name: nginx-certs
+        secret:
+          secretName: are-nginx-tls

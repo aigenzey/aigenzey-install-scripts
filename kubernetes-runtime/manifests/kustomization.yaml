@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: aigenzey-runtime
+
+resources:
+  - namespace.yaml
+  - redis/redis-deployment.yaml
+  - redis/redis-service.yaml
+  - crawl4ai/crawl4ai-deployment.yaml
+  - crawl4ai/crawl4ai-service.yaml
+  - are/are-configmap.yaml
+  - are/are-secret.yaml
+  - are/are-pvc.yaml
+  - are/are-deployment.yaml
+  - are/are-service.yaml
+  - ai-gateway/ai-gateway-configmap.yaml
+  - ai-gateway/ai-gateway-secret.yaml
+  - ai-gateway/ai-gateway-deployment.yaml
+  - ai-gateway/ai-gateway-service.yaml
+  - nginx/nginx-configmap.yaml
+  - nginx/nginx-tls-secret.yaml
+  - nginx/nginx-deployment.yaml
+  - nginx/nginx-service.yaml
+  - ingress/runtime-ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: aigenzey-runtime

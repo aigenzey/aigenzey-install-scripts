@@ -1,0 +1,51 @@
+# ==============================================================================
+# Aigenzey Runtime VM Configuration (config.properties)
+# ==============================================================================
+# This configuration file defines the settings for the Aigenzey Agent Runtime
+# Engine (ARE), AI Gateway, and background services running on a Virtual Machine.
+# Copy this file to /opt/aigenzey/config.properties or pass it via --config.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Central Control Plane Connection
+# ------------------------------------------------------------------------------
+# URL of the central Aigenzey Management API.
+# Default SaaS: https://api.platform.aigenzey.com
+AIGENZEY_API_URL=https://api.platform.aigenzey.com
+
+# ------------------------------------------------------------------------------
+# 2. Instance & Organization Identification
+# ------------------------------------------------------------------------------
+# A unique identifier for this runtime node/VM (e.g. acme-prod-runtime-01).
+INSTANCE_NAME=my-runtime-instance
+
+# Organization identifier in Aigenzey (e.g. your company or tenant slug).
+# Used to isolate agent definitions, tools, and execution permissions.
+DEFAULT_ORG=default
+
+# ------------------------------------------------------------------------------
+# 3. Instance Administrator Credentials
+# ------------------------------------------------------------------------------
+# Credentials of an Instance Admin account on the central Aigenzey Management API.
+# Used by the runtime during startup to authenticate and sync agent workflows.
+INSTANCEADMIN_EMAIL=instanceadmin@aigenzey.com
+INSTANCEADMIN_PASSWORD=YourSecurePasswordHere
+
+# ------------------------------------------------------------------------------
+# 4. LLM Provider API Keys
+# ------------------------------------------------------------------------------
+# Gemini API Key for running Google Gemini models (Primary for ADK agents).
+# Obtain from Google AI Studio (https://aistudio.google.com) or GCP Vertex AI.
+GOOGLE_API_KEY=
+
+# (Optional) Additional provider keys if agents use OpenAI or Anthropic models
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+
+# ------------------------------------------------------------------------------
+# 5. Service Ports (Defaults)
+# ------------------------------------------------------------------------------
+ARE_PORT=8000
+AI_GATEWAY_PORT=8090
+CRAWL4AI_PORT=11235
+REDIS_PORT=6379
