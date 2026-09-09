@@ -191,6 +191,36 @@ if [[ -f /etc/os-release ]]; then
     fi
 fi
 
+# Repair broken python3 / python symlinks before any APT operations
+# Ubuntu hooks (such as /usr/lib/cnf-update-db) require a valid /usr/bin/python3
+repair_system_python() {
+    if [[ -L /usr/bin/python3 && ! -e /usr/bin/python3 ]]; then
+        log "$YELLOW" "Detected broken /usr/bin/python3 symlink from a previous run. Repairing..."
+        rm -f /usr/bin/python3
+        for py in /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10 /usr/bin/python3.9 /usr/bin/python3.8; do
+            if [[ -x "$py" ]]; then
+                ln -sf "$py" /usr/bin/python3
+                log "$GREEN" "Restored /usr/bin/python3 -> $py"
+                break
+            fi
+        done
+    fi
+    if [[ -L /usr/bin/python && ! -e /usr/bin/python ]]; then
+        rm -f /usr/bin/python
+        if [[ -x /usr/bin/python3 ]]; then
+            ln -sf /usr/bin/python3 /usr/bin/python
+        fi
+    fi
+}
+
+apt_update() {
+    apt-get update -y || apt-get -o APT::Update::Post-Invoke-Success="" update -y
+}
+
+if [[ "$OS_FAMILY" == "debian" ]]; then
+    repair_system_python
+fi
+
 # ------------------------------------------------------------------------------
 # 1. System Updates & Essential Tools
 # ------------------------------------------------------------------------------
@@ -199,7 +229,7 @@ print_header "1. System Updates & Essential Packages"
 if [[ "$OS_FAMILY" == "debian" ]]; then
     export DEBIAN_FRONTEND=noninteractive
     log "$BLUE" "Updating apt cache and installing essential build packages..."
-    apt-get update -y
+    apt_update
     apt-get install -y --no-install-recommends \
         apt-transport-https \
         ca-certificates \
@@ -284,33 +314,50 @@ print_header "3. Python $PYTHON_VERSION Setup"
 PYTHON_PKG="python${PYTHON_VERSION}"
 
 if [[ "$OS_FAMILY" == "debian" ]]; then
+    repair_system_python
+
     log "$BLUE" "Adding deadsnakes PPA for Python $PYTHON_VERSION..."
     add-apt-repository -y ppa:deadsnakes/ppa || true
-    apt-get update -y
+    apt_update
 
-    log "$BLUE" "Installing ${PYTHON_PKG}, venv, dev headers, and pip..."
-    apt-get install -y \
-        "${PYTHON_PKG}" \
-        "${PYTHON_PKG}-venv" \
-        "${PYTHON_PKG}-dev" \
-        "${PYTHON_PKG}-distutils" || true
+    log "$BLUE" "Installing ${PYTHON_PKG}, venv, and dev headers..."
+    if ! apt-get install -y "${PYTHON_PKG}" "${PYTHON_PKG}-venv" "${PYTHON_PKG}-dev"; then
+        log "$YELLOW" "Retrying ${PYTHON_PKG} installation after apt cache update..."
+        apt_update
+        apt-get install -y "${PYTHON_PKG}" "${PYTHON_PKG}-venv" "${PYTHON_PKG}-dev" || {
+            log "$RED" "Failed to install ${PYTHON_PKG} packages."
+        }
+    fi
+
+    # distutils was removed in Python 3.12+ (PEP 632). Only install if available on Python < 3.12.
+    apt-get install -y "${PYTHON_PKG}-distutils" 2>/dev/null || true
 
     apt-get install -y python3-pip python3-setuptools python3-wheel || true
 
     # Bootstrap pip if missing
-    if ! "${PYTHON_PKG}" -m pip --version &>/dev/null; then
+    if command -v "${PYTHON_PKG}" &>/dev/null && ! "${PYTHON_PKG}" -m pip --version &>/dev/null; then
         log "$YELLOW" "Bootstrapping pip for ${PYTHON_PKG}..."
         curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-        "${PYTHON_PKG}" /tmp/get-pip.py || true
+        "${PYTHON_PKG}" /tmp/get-pip.py --break-system-packages 2>/dev/null || \
+            "${PYTHON_PKG}" /tmp/get-pip.py 2>/dev/null || true
         rm -f /tmp/get-pip.py
     fi
 
-    # Symlink setup
-    if command -v update-alternatives &>/dev/null; then
-        update-alternatives --install /usr/bin/python3 python3 "/usr/bin/${PYTHON_PKG}" 1 || true
+    # Symlink setup - only point to ${PYTHON_PKG} if the binary exists
+    if [[ -x "/usr/bin/${PYTHON_PKG}" ]]; then
+        if command -v update-alternatives &>/dev/null; then
+            update-alternatives --install /usr/bin/python3 python3 "/usr/bin/${PYTHON_PKG}" 1 2>/dev/null || true
+            update-alternatives --set python3 "/usr/bin/${PYTHON_PKG}" 2>/dev/null || true
+        fi
+        ln -sf "/usr/bin/${PYTHON_PKG}" /usr/bin/python3
+        ln -sf "/usr/bin/${PYTHON_PKG}" /usr/bin/python
+    elif command -v "${PYTHON_PKG}" &>/dev/null; then
+        TARGET_BIN=$(command -v "${PYTHON_PKG}")
+        ln -sf "${TARGET_BIN}" /usr/bin/python3
+        ln -sf "${TARGET_BIN}" /usr/bin/python
+    else
+        log "$YELLOW" "${PYTHON_PKG} binary not found in /usr/bin; leaving existing python3 intact."
     fi
-    ln -sf "/usr/bin/${PYTHON_PKG}" /usr/bin/python3
-    ln -sf "/usr/bin/${PYTHON_PKG}" /usr/bin/python
 
 elif [[ "$OS_FAMILY" == "rhel" ]]; then
     log "$BLUE" "Installing Python packages via dnf/yum..."
@@ -327,11 +374,17 @@ fi
 
 # Upgrade core pip/packaging tools
 if command -v python3 &>/dev/null && python3 -m pip --version &>/dev/null; then
-    python3 -m pip install --upgrade --no-cache-dir pip setuptools wheel 2>/dev/null || true
+    python3 -m pip install --upgrade --no-cache-dir --break-system-packages pip setuptools wheel 2>/dev/null || \
+        python3 -m pip install --upgrade --no-cache-dir pip setuptools wheel 2>/dev/null || true
 fi
 
-PYTHON_ACTIVE_VER=$(python3 --version 2>&1 || echo "Python not found")
-log "$GREEN" "✓ $PYTHON_ACTIVE_VER configured."
+if command -v python3 &>/dev/null; then
+    PYTHON_ACTIVE_VER=$(python3 --version 2>&1)
+    log "$GREEN" "✓ $PYTHON_ACTIVE_VER configured."
+else
+    PYTHON_ACTIVE_VER="Python not found"
+    log "$RED" "✗ Python 3 could not be found or configured."
+fi
 
 # ------------------------------------------------------------------------------
 # 4. Redis Server Setup
@@ -454,7 +507,11 @@ chmod 755 "$INSTALL_DIR"
 print_header "BOOTSTRAP VERIFICATION SUMMARY"
 echo -e "${GREEN}✓ OS Packages & Tools:${NC}      OK"
 echo -e "${GREEN}✓ Service User & Sudoers:${NC}   $AIGENZEY_USER (NOPASSWD: ALL in $SUDOERS_FILE)"
-echo -e "${GREEN}✓ Python Environment:${NC}       $PYTHON_ACTIVE_VER"
+if command -v python3 &>/dev/null; then
+    echo -e "${GREEN}✓ Python Environment:${NC}       $PYTHON_ACTIVE_VER"
+else
+    echo -e "${RED}✗ Python Environment:${NC}       $PYTHON_ACTIVE_VER"
+fi
 echo -e "${GREEN}✓ Redis Server:${NC}             $(systemctl is-active redis-server 2>/dev/null || systemctl is-active redis 2>/dev/null || echo 'inactive')"
 [[ "$SKIP_DOCKER" == false ]] && echo -e "${GREEN}✓ Docker Daemon:${NC}            $(systemctl is-active docker 2>/dev/null || echo 'inactive')"
 [[ "$SKIP_CRAWL4AI" == false ]] && echo -e "${GREEN}✓ crawl4ai Container:${NC}       $(docker ps --filter 'name=crawl4ai' --format '{{.Status}}' 2>/dev/null || echo 'not running')"
