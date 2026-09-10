@@ -160,6 +160,12 @@ elif [[ -n "${JSON_FILE}" ]]; then
         --namespace="${NAMESPACE}" \
         --dry-run=client -o yaml | kubectl apply -f -
 
+    log_info "Creating generic GCP credentials secret 'gcp-credentials' for Vertex AI..."
+    kubectl create secret generic gcp-credentials \
+        --from-file=key.json="${JSON_FILE}" \
+        --namespace="${NAMESPACE}" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
 elif [[ "${USE_GCLOUD_TOKEN}" == true ]]; then
     if ! command -v gcloud &>/dev/null; then
         log_error "gcloud CLI is required for --gcloud-token."

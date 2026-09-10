@@ -58,7 +58,11 @@ Before installing, make sure you have the following information and credentials:
 | **Deployment Secret Key** | `SECRET_KEY` | `--secret-key <key>` | **Yes** | Secret key for agent deployment authentication. Must match the secret key used by the Aigenzey Control Plane / UI (default: `AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do`). |
 | **Instance Admin Email** | `INSTANCEADMIN_EMAIL` | `--admin-email <email>` | **Yes** | Administrator email registered in your Aigenzey platform. |
 | **Instance Admin Password** | `INSTANCEADMIN_PASSWORD` | `--admin-password <pw>` | **Yes** | Password for the instance admin account to authenticate synchronization with the central API. |
-| **Gemini API Key** | `GOOGLE_API_KEY` | `--google-api-key <key>` | **Yes** (for agents) | Google Gemini API key used by the Agent Runtime Engine (ADK agents). Obtain from [Google AI Studio](https://aistudio.google.com). |
+| **Gemini API Key** | `GOOGLE_API_KEY` | `--google-api-key <key>` | **Yes** (if not using Vertex AI) | Google Gemini API key used by the Agent Runtime Engine (ADK agents). Obtain from [Google AI Studio](https://aistudio.google.com). |
+| **Vertex AI Enabled** | `GOOGLE_GENAI_USE_VERTEXAI` | `--vertex-ai` | Optional | Set to `true` to use Google Cloud Vertex AI instead of Google AI Studio API key (default: `false`). |
+| **GCP Project ID** | `GOOGLE_CLOUD_PROJECT` | `--gcp-project <id>` | Optional (for Vertex AI) | Google Cloud Project ID hosting Vertex AI models (e.g. `aigenzey-cyberhoot`). |
+| **GCP Location/Region** | `GOOGLE_CLOUD_LOCATION` | `--gcp-location <loc>` | Optional (for Vertex AI) | Google Cloud region for Vertex AI endpoints (default: `global` or `us-central1`). |
+| **GCP Credentials / ADC** | `GCP_KEY_FILE` / `GOOGLE_APPLICATION_CREDENTIALS` | `--gcp-key-file <file>` | Optional (for Vertex AI) | GCP Service Account JSON key mounted into ARE to provide Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS=/etc/gcp/key.json`). Auto-configured if `--json-key` is supplied. |
 | **Enable Nginx Proxy** | `ENABLE_NGINX` | `--with-nginx` / `--no-nginx` | Optional | Deploy dedicated Nginx reverse proxy on port 443 (HTTPS) with TLS termination (default: `true`). |
 | **Nginx Hostname** | `NGINX_HOST` | `--nginx-host <host>` | Optional | Domain name for Nginx `server_name` directive (default: `_` for catch-all). |
 | **TLS Certificate File** | `TLS_CERT_FILE` | `--tls-cert <file>` | Optional | Path to custom SSL/TLS certificate in PEM format. If omitted, self-signed certificate is auto-generated. |
@@ -95,8 +99,13 @@ Before installing, make sure you have the following information and credentials:
    INSTANCEADMIN_EMAIL=admin@mycompany.com
    INSTANCEADMIN_PASSWORD=MySecurePassword123
 
-   # LLM Provider API Keys
-   GOOGLE_API_KEY=AIzaSyD...
+   # LLM Provider API Keys & Vertex AI Settings
+   GOOGLE_API_KEY=AIzaSyD...       # Leave blank if using Vertex AI
+   GOOGLE_GENAI_USE_VERTEXAI=true   # Set true for Vertex AI
+   GOOGLE_CLOUD_PROJECT=aigenzey-cyberhoot
+   GOOGLE_CLOUD_LOCATION=global
+   GCP_KEY_FILE=/path/to/my-sa-key.json # Auto-mounts as /etc/gcp/key.json for ADC
+
    OPENAI_API_KEY=sk-...
    ANTHROPIC_API_KEY=
 
@@ -142,7 +151,7 @@ Before installing, make sure you have the following information and credentials:
   --nginx-host "_"
 ```
 
-**Using GCP Service Account JSON key (`--json-key`):**
+**Using GCP Service Account JSON key (`--json-key`) with Vertex AI:**
 ```bash
 ./install.sh \
   -n aigenzey-runtime \
@@ -152,7 +161,9 @@ Before installing, make sure you have the following information and credentials:
   --admin-email admin@mycompany.com \
   --admin-password MySecurePassword123 \
   --secret-key AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do \
-  --google-api-key "AIzaSyD..." \
+  --vertex-ai \
+  --gcp-project aigenzey-cyberhoot \
+  --gcp-location global \
   --api-url https://api.platform.aigenzey.com \
   --with-nginx \
   --nginx-host "_"

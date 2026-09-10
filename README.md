@@ -14,7 +14,10 @@ Whether installing on a Virtual Machine or deploying to a Kubernetes cluster, th
 | **Instance Name** | `INSTANCE_NAME` | `--instance-name <name>` | **Yes** | Unique hostname or identifier for this runtime node/pod cluster. | `byo-runtime-01`, `k8s-us-east-1` |
 | **Deployment Secret Key** | `SECRET_KEY` | `--secret-key <key>` | **Yes** | Secret key for agent deployment authentication. Must match the secret key used by the Aigenzey Control Plane / UI. | `AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do` |
 | **Registry / GCR Key** | `KEY_FILE` or `JSON_KEY` | `--key-file <file>` or `--json-key <file>` | **Yes** (for K8s & private pulls) | Access credentials for Google Artifact Registry. Specify either Base64 key (`aigenzey-image-access.txt`) or GCP service account JSON key (`my-sa-key.json`). | `aigenzey-image-access.txt`, `my-sa-key.json` |
-| **Gemini API Key** | `GOOGLE_API_KEY` | `--google-api-key <key>` | **Yes** (for agents) | Google Gemini API key used by the Agent Runtime Engine (ADK agents). Obtain from [Google AI Studio](https://aistudio.google.com). | `AIzaSyD...` |
+| **Gemini API Key** | `GOOGLE_API_KEY` | `--google-api-key <key>` | **Yes** (if not using Vertex AI) | Google Gemini API key used by the Agent Runtime Engine (ADK agents). Obtain from [Google AI Studio](https://aistudio.google.com). | `AIzaSyD...` |
+| **Vertex AI Enabled** | `GOOGLE_GENAI_USE_VERTEXAI` | `--vertex-ai` | Optional | Use Google Cloud Vertex AI instead of Google AI Studio API key (`true`/`false`). | `true` |
+| **GCP Project ID** | `GOOGLE_CLOUD_PROJECT` | `--gcp-project <id>` | Optional (for Vertex AI) | Google Cloud Project ID hosting Vertex AI models. | `aigenzey-cyberhoot` |
+| **GCP Location/Region** | `GOOGLE_CLOUD_LOCATION` | `--gcp-location <loc>` | Optional (for Vertex AI) | Google Cloud region for Vertex AI endpoints (default: `global` or `us-central1`). | `global`, `us-central1` |
 | **Instance Admin Email** | `INSTANCEADMIN_EMAIL` | `--instanceadmin-email <email>` | **Yes** | Admin email registered in your Aigenzey platform. Used by runtime to authenticate and sync agent workflows. | `instanceadmin@aigenzey.com` |
 | **Instance Admin Password** | `INSTANCEADMIN_PASSWORD` | `--instanceadmin-password <pass>` | **Yes** | Password for the Instance Admin account to authorize synchronization with the central API. | `YourSecretPassword123` |
 | **Enable Nginx Proxy** | `ENABLE_NGINX` | `--with-nginx` / `--no-nginx` | Optional | Deploy dedicated Nginx reverse proxy on port 443 with TLS termination (Kubernetes runtime, default: `true`). | `true` |
@@ -64,7 +67,10 @@ You can supply these inputs using either a **Configuration File** (recommended f
    DEFAULT_ORG=my-org
    INSTANCEADMIN_EMAIL=admin@mycompany.com
    INSTANCEADMIN_PASSWORD=MySecurePassword123
-   GOOGLE_API_KEY=AIzaSyD...
+   GOOGLE_API_KEY=AIzaSyD...       # Or leave blank if using Vertex AI
+   GOOGLE_GENAI_USE_VERTEXAI=true   # Enable Google Cloud Vertex AI
+   GOOGLE_CLOUD_PROJECT=aigenzey-cyberhoot
+   GOOGLE_CLOUD_LOCATION=global
    SECRET_KEY=AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do
 
    # Nginx Reverse Proxy Settings

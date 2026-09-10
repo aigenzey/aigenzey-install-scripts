@@ -51,6 +51,11 @@ GOOGLE_API_KEY=""
 OPENAI_API_KEY=""
 ANTHROPIC_API_KEY=""
 SECRET_KEY="${SECRET_KEY:-AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do}"
+GOOGLE_GENAI_USE_VERTEXAI="${GOOGLE_GENAI_USE_VERTEXAI:-false}"
+GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:-}"
+GOOGLE_CLOUD_LOCATION="${GOOGLE_CLOUD_LOCATION:-global}"
+GCP_KEY_FILE="${GCP_KEY_FILE:-}"
+GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS:-}"
 
 ARE_IMAGE="us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/are-service:latest"
 AI_GATEWAY_IMAGE="us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/ai-gateway-service:latest"
@@ -91,7 +96,11 @@ Application Parameters:
   --admin-email <email>         Instance admin email (default: instanceadmin@aigenzey.com)
   --admin-password <password>   Instance admin password
   --secret-key <key>            Secret key for agent deployment authentication (default: AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do)
-  --google-api-key <key>        Google Gemini API Key
+  --google-api-key <key>        Google Gemini API Key (for Google AI Studio)
+  --vertex-ai                   Enable Google Cloud Vertex AI (default: false, uses GOOGLE_API_KEY)
+  --gcp-project <id>            Google Cloud Project ID for Vertex AI (e.g. aigenzey-cyberhoot)
+  --gcp-location <location>     Google Cloud Region/Location for Vertex AI (default: global)
+  --gcp-key-file <file>         GCP service account JSON key file for Vertex AI authentication
   --openai-api-key <key>        OpenAI API Key
   --anthropic-api-key <key>     Anthropic API Key
 
@@ -122,6 +131,28 @@ Examples:
   ./install.sh --dry-run
 EOF
 }
+
+# Pre-scan for --config so file settings serve as baseline that CLI flags can override
+for ((i=1; i<=$#; i++)); do
+    arg="${!i}"
+    if [[ "${arg}" == "--config" ]]; then
+        next_idx=$((i + 1))
+        if [[ ${next_idx} -le $# ]]; then
+            CONFIG_FILE="${!next_idx}"
+            if [[ -f "${CONFIG_FILE}" ]]; then
+                log_info "Sourcing configuration baseline from ${CONFIG_FILE}..."
+                # shellcheck disable=SC1090
+                set -a
+                source "${CONFIG_FILE}"
+                set +a
+            else
+                log_error "Configuration file not found: ${CONFIG_FILE}"
+                exit 1
+            fi
+        fi
+        break
+    fi
+done
 
 # Parse options
 while [[ $# -gt 0 ]]; do
@@ -176,6 +207,26 @@ while [[ $# -gt 0 ]]; do
             ;;
         --google-api-key)
             GOOGLE_API_KEY="$2"
+            shift 2
+            ;;
+        --vertex-ai)
+            GOOGLE_GENAI_USE_VERTEXAI=true
+            shift 1
+            ;;
+        --gcp-project)
+            GOOGLE_CLOUD_PROJECT="$2"
+            shift 2
+            ;;
+        --gcp-location)
+            GOOGLE_CLOUD_LOCATION="$2"
+            shift 2
+            ;;
+        --gcp-key-file)
+            GCP_KEY_FILE="$2"
+            shift 2
+            ;;
+        --google-application-credentials)
+            GOOGLE_APPLICATION_CREDENTIALS="$2"
             shift 2
             ;;
         --openai-api-key)
@@ -242,19 +293,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-# Load environment configuration file if specified
-if [[ -n "${CONFIG_FILE}" ]]; then
-    if [[ ! -f "${CONFIG_FILE}" ]]; then
-        log_error "Configuration file not found: ${CONFIG_FILE}"
-        exit 1
-    fi
-    log_info "Sourcing configuration from ${CONFIG_FILE}..."
-    # shellcheck disable=SC1090
-    set -a
-    source "${CONFIG_FILE}"
-    set +a
-fi
 
 echo "=========================================================="
 echo "      Aigenzey Runtime - Kubernetes Installer             "
@@ -332,6 +370,26 @@ fi
 
 # Step 5: Configure and Deploy ARE
 log_info "Preparing ARE ConfigMap and Secret..."
+
+# Ensure GCP credentials secret exists if a service account key was provided
+GCP_AUTH_KEY="${GCP_KEY_FILE:-${JSON_KEY:-}}"
+if [[ -n "${GCP_AUTH_KEY}" ]]; then
+    if [[ ! -f "${GCP_AUTH_KEY}" ]]; then
+        log_error "GCP key file not found: ${GCP_AUTH_KEY}"
+        exit 1
+    fi
+    log_info "Ensuring GCP credentials secret 'gcp-credentials' exists for Vertex AI..."
+    if [[ "${DRY_RUN}" == false ]]; then
+        kubectl create secret generic gcp-credentials \
+            --from-file=key.json="${GCP_AUTH_KEY}" \
+            -n "${NAMESPACE}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+    else
+        log_info "[DRY-RUN] Would create secret gcp-credentials from ${GCP_AUTH_KEY}"
+    fi
+    GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS:-/etc/gcp/key.json}"
+fi
+
 ARE_CONFIG_YAML=$(cat <<EOF
 apiVersion: v1
 kind: ConfigMap
@@ -347,7 +405,10 @@ data:
   DEPLOYMENT: "LOCAL"
   API_KEY_CHECK: "false"
   ENABLE_SESSION_LOGGING: "true"
-  GOOGLE_GENAI_USE_VERTEXAI: "false"
+  GOOGLE_GENAI_USE_VERTEXAI: "${GOOGLE_GENAI_USE_VERTEXAI}"
+  GOOGLE_CLOUD_PROJECT: "${GOOGLE_CLOUD_PROJECT}"
+  GOOGLE_CLOUD_LOCATION: "${GOOGLE_CLOUD_LOCATION}"
+  GOOGLE_APPLICATION_CREDENTIALS: "${GOOGLE_APPLICATION_CREDENTIALS:-}"
   DEPLOYMENT_SYNC: "true"
   AIGENZEY_API_URL: "${AIGENZEY_API_URL}"
   INSTANCE_NAME: "${INSTANCE_NAME}"

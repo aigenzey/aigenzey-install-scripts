@@ -79,7 +79,14 @@ spec:
         - name: are-storage
           mountPath: /logs
           subPath: logs
+        - name: gcp-credentials
+          mountPath: /etc/gcp
+          readOnly: true
       volumes:
       - name: are-storage
         persistentVolumeClaim:
           claimName: are-pvc
+      - name: gcp-credentials
+        secret:
+          secretName: gcp-credentials
+          optional: true
