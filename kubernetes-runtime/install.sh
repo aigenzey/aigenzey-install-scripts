@@ -71,6 +71,7 @@ INGRESS_HOST="runtime.example.com"
 TLS_CERT_FILE="${TLS_CERT_FILE:-}"
 TLS_KEY_FILE="${TLS_KEY_FILE:-}"
 DRY_RUN=false
+FORCE_ROLLOUT=false
 WAIT_TIMEOUT="300s"
 
 print_usage() {
@@ -118,6 +119,7 @@ Component Toggles:
   --ingress-host <host>         Hostname for Ingress (default: runtime.example.com)
 
 Execution Options:
+  --force-rollout               Force restart/rollout of deployments to pull updated images
   --dry-run                     Generate and display manifests without applying
   --timeout <seconds>           Timeout for pod readiness wait (default: 300s)
   -h, --help                    Show this help message
@@ -282,6 +284,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dry-run)
             DRY_RUN=true
+            shift 1
+            ;;
+        --force-rollout)
+            FORCE_ROLLOUT=true
             shift 1
             ;;
         --timeout)
@@ -710,6 +716,18 @@ wait_for_deployment() {
         log_warn "Deployment ${DEP} rollout did not complete within ${WAIT_TIMEOUT}."
     fi
 }
+
+if [[ "${FORCE_ROLLOUT}" == true ]]; then
+    log_info "Force rollout requested (--force-rollout). Restarting deployments to pull fresh images..."
+    kubectl rollout restart deployment/are-deployment -n "${NAMESPACE}"
+    if [[ "${ENABLE_AI_GATEWAY}" == true ]]; then
+        kubectl rollout restart deployment/ai-gateway-deployment -n "${NAMESPACE}"
+    fi
+    kubectl rollout restart deployment/crawl4ai -n "${NAMESPACE}"
+    if [[ "${ENABLE_NGINX}" == true ]]; then
+        kubectl rollout restart deployment/nginx-deployment -n "${NAMESPACE}"
+    fi
+fi
 
 wait_for_deployment redis
 wait_for_deployment crawl4ai

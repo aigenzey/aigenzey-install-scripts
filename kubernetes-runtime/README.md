@@ -229,6 +229,12 @@ Inspect the generated Kubernetes manifests without applying them:
 ./install.sh --config config.env --dry-run
 ```
 
+### Force Image Update / Rollout Restart
+If you push an updated Docker image under the same `:latest` tag and want to force the Kubernetes cluster to immediately pull the new images and rolling restart the pods:
+```bash
+./install.sh --config config.env --force-rollout
+```
+
 ### Expose External Traffic with Ingress
 To configure TLS Ingress:
 ```bash
