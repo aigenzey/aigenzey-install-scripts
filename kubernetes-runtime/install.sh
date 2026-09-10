@@ -518,6 +518,22 @@ EOF
 )
 
     if [[ "${DRY_RUN}" == false ]]; then
+        # Ensure central platform knows ARE is reachable at http://are-service:8000 in Kubernetes
+        if [[ -n "${INSTANCEADMIN_EMAIL}" && -n "${INSTANCEADMIN_PASSWORD}" && -n "${AIGENZEY_API_URL}" && -n "${INSTANCE_NAME}" ]]; then
+            log_info "Synchronizing are_url='http://are-service:8000' for instance '${INSTANCE_NAME}' with Aigenzey Platform..."
+            LOGIN_RESP=$(curl -sf -X POST "${AIGENZEY_API_URL%/}/api/login" \
+                -H "Content-Type: application/json" \
+                -d "{\"email\": \"${INSTANCEADMIN_EMAIL}\", \"password\": \"${INSTANCEADMIN_PASSWORD}\"}" 2>/dev/null || true)
+            AUTH_TOKEN=$(echo "${LOGIN_RESP}" | grep -o '"access_token":"[^"]*' | cut -d'"' -f4 || true)
+            if [[ -n "${AUTH_TOKEN}" ]]; then
+                curl -sf -X PUT "${AIGENZEY_API_URL%/}/instances/${INSTANCE_NAME}" \
+                    -H "Authorization: Bearer ${AUTH_TOKEN}" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"name\": \"${INSTANCE_NAME}\", \"region\": \"${POD_REGION:-us-central1}\", \"are_url\": \"http://are-service:8000\"}" &>/dev/null || true
+                log_success "Synchronized instance are_url to http://are-service:8000."
+            fi
+        fi
+
         echo "${GATEWAY_CONFIG_YAML}" | kubectl apply -f -
         echo "${GATEWAY_SECRET_YAML}" | kubectl apply -f -
         kubectl apply -n "${NAMESPACE}" -f "${MANIFESTS_DIR}/ai-gateway/ai-gateway-deployment.yaml"
