@@ -112,6 +112,9 @@ Before installing, make sure you have the following information and credentials:
    # Deployment & Session Secret Key (Must match Aigenzey UI/Platform)
    SECRET_KEY=AGZalfjei0eowfpiBv4iu3h0f7j0hfcna8do
 
+   # Crawl4AI Internal Scraper Bearer Token
+   CRAWL4AI_API_TOKEN=aigenzey-crawl4ai-internal-token
+
    # Nginx Reverse Proxy & TLS Configuration
    ENABLE_NGINX=true
    NGINX_HOST="_"           # Custom domain (e.g. api.yourcompany.com) or "_" for catch-all

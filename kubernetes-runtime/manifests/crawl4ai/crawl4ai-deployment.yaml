@@ -23,6 +23,12 @@ spec:
         ports:
         - containerPort: 11235
           name: http
+        env:
+        - name: CRAWL4AI_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: are-secret
+              key: CRAWL4AI_API_TOKEN
         resources:
           requests:
             cpu: 250m

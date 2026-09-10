@@ -60,6 +60,7 @@ GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS:-}"
 ARE_IMAGE="us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/are-service:latest"
 AI_GATEWAY_IMAGE="us-central1-docker.pkg.dev/aigenzey-dev/aigenzey-images/ai-gateway-service:latest"
 CRAWL4AI_IMAGE="unclecode/crawl4ai:latest"
+CRAWL4AI_API_TOKEN="${CRAWL4AI_API_TOKEN:-aigenzey-crawl4ai-internal-token}"
 REDIS_IMAGE="redis:7-alpine"
 
 ENABLE_AI_GATEWAY=true
@@ -105,6 +106,7 @@ Application Parameters:
   --anthropic-api-key <key>     Anthropic API Key
 
 Component Toggles:
+  --crawl4ai-api-token <token>  Internal Bearer token for Crawl4AI service
   --with-gateway                Deploy AI Gateway alongside ARE (default: true)
   --no-gateway                  Skip AI Gateway deployment (deploy ARE only)
   --with-nginx                  Deploy Nginx reverse proxy on port 443 (default: true)
@@ -235,6 +237,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --anthropic-api-key)
             ANTHROPIC_API_KEY="$2"
+            shift 2
+            ;;
+        --crawl4ai-api-token)
+            CRAWL4AI_API_TOKEN="$2"
             shift 2
             ;;
         --with-gateway)
@@ -422,6 +428,7 @@ data:
   REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
   CRAWL4AI_BASE_URL: "http://crawl4ai-service:11235"
+  CRAWL4AI_ENDPOINT: "http://crawl4ai-service:11235"
 EOF
 )
 
@@ -445,6 +452,7 @@ stringData:
   PODADMIN_EMAIL: "${INSTANCEADMIN_EMAIL}"
   PODADMIN_PASSWORD: "${INSTANCEADMIN_PASSWORD}"
   PODADMIN_TOKEN_TTL: "900"
+  CRAWL4AI_API_TOKEN: "${CRAWL4AI_API_TOKEN}"
 EOF
 )
 

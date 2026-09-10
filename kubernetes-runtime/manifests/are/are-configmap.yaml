@@ -27,5 +27,5 @@ data:
   SESSION_SERVICE_TYPE: "redis"
   REDIS_URL: "redis://redis-service:6379/0"
   REDIS_HOST: "redis-service"
-  REDIS_PORT: "6379"
   CRAWL4AI_BASE_URL: "http://crawl4ai-service:11235"
+  CRAWL4AI_ENDPOINT: "http://crawl4ai-service:11235"
